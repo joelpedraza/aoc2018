@@ -1,3 +1,6 @@
+mod problem01;
+
 fn main() {
-    println!("Hello, Advent of Code 2018!");
+    problem01::part1();
+    problem01::part2();
 }
