@@ -1,12 +1,12 @@
 use ::std::iter::FromIterator;
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug)]
 struct Claim {
     id: u16,
     rect: Rect,
 }
 
-#[derive(Debug, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Debug)]
 struct Rect {
     left: u16,
     top: u16,
@@ -101,7 +101,9 @@ fn find_non_intersecting_claim(input: &str) -> u16 {
     let claims = parse_claims(input);
     let len = claims.len();
 
-    let mut intersected_squares: BTreeSet<&Claim> = claims.iter().collect();
+    let mut intersected_squares: BTreeSet<u16> = claims.iter()
+        .map(|claim| { claim.id })
+        .collect();
 
     for i in 0..len {
         for j in i+1..len {
@@ -111,15 +113,15 @@ fn find_non_intersecting_claim(input: &str) -> u16 {
             let intersection = a.rect.intersect(&b.rect);
 
             if intersection.is_some() {
-                intersected_squares.remove(a);
-                intersected_squares.remove(b);
+                intersected_squares.remove(&a.id);
+                intersected_squares.remove(&b.id);
             }
         }
     }
 
     if intersected_squares.len() != 1 { panic!("More than one non-intersecting claim") }
 
-    intersected_squares.iter().next().unwrap().id
+    *(intersected_squares.iter().next().unwrap())
 }
 
 
