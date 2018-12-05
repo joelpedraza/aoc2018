@@ -5,18 +5,38 @@ mod problem04;
 mod problem05;
 
 fn main() {
-    problem01::part1();
-    problem01::part2();
+    do_problem(problem01::part1);
+    do_problem(problem01::part2);
 
-    problem02::part1();
-    problem02::part2();
+    do_problem(problem02::part1);
+    do_problem(problem02::part2);
 
-    problem03::part1();
-    problem03::part2();
+    do_problem(problem03::part1);
+    do_problem(problem03::part2);
 
-    problem04::part1();
-    problem04::part2();
+    do_problem(problem04::part1);
+    do_problem(problem04::part2);
 
-    problem05::part1();
-    problem05::part2();
+    do_problem(problem05::part1);
+    do_problem(problem05::part2);
+}
+
+fn time_it(f: fn() -> ()) {
+    use std::time::Instant;
+
+    let now = Instant::now();
+
+    f();
+
+    let elapsed = now.elapsed();
+
+    let nanos = elapsed.as_secs() * 1_000_000_000u64 + elapsed.subsec_nanos() as u64;
+    let millis = nanos as f64 / 1_000f64;
+
+    println!("{: >20.04}ms", millis);
+
+}
+
+fn do_problem(f: fn() -> ()) {
+    time_it(f)
 }
