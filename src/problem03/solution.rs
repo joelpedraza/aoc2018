@@ -66,12 +66,12 @@ pub fn part2() {
 }
 
 fn brute_force(input: &str) -> usize {
-    use std::collections::BTreeSet;
+    use bit_set::BitSet;
 
     let claims = parse_claims(input);
     let len = claims.len();
 
-    let mut intersected_squares = BTreeSet::new();
+    let mut intersected_squares = BitSet::new();
 
     for i in 0..len {
         for j in i+1..len {
@@ -96,13 +96,13 @@ fn brute_force(input: &str) -> usize {
 }
 
 fn find_non_intersecting_claim(input: &str) -> u16 {
-    use std::collections::BTreeSet;
+    use bit_set::BitSet;
 
     let claims = parse_claims(input);
     let len = claims.len();
 
-    let mut intersected_squares: BTreeSet<u16> = claims.iter()
-        .map(|claim| { claim.id })
+    let mut intersected_squares: BitSet = claims.iter()
+        .map(|claim| { claim.id as usize })
         .collect();
 
     for i in 0..len {
@@ -113,15 +113,15 @@ fn find_non_intersecting_claim(input: &str) -> u16 {
             let intersection = a.rect.intersect(&b.rect);
 
             if intersection.is_some() {
-                intersected_squares.remove(&a.id);
-                intersected_squares.remove(&b.id);
+                intersected_squares.remove(a.id as usize);
+                intersected_squares.remove(b.id as usize);
             }
         }
     }
 
     if intersected_squares.len() != 1 { panic!("More than one non-intersecting claim") }
 
-    *(intersected_squares.iter().next().unwrap())
+    (intersected_squares.iter().next().unwrap()) as u16
 }
 
 
