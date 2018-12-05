@@ -40,23 +40,23 @@ pub fn solve_part_2(input: &str) -> isize {
 
 #[cfg(test)]
 mod tests {
-    use ::problem01::solution;
+    use super::*;
 
     #[test]
     fn part_1_is_correct() {
-        test_sample(SAMPLE1, 3, solution::solve_part_1);
-        test_sample(SAMPLE2, 3, solution::solve_part_1);
-        test_sample(SAMPLE3, 0, solution::solve_part_1);
-        test_sample(SAMPLE4, -6, solution::solve_part_1);
+        test_sample(SAMPLE1, 3, solve_part_1);
+        test_sample(SAMPLE2, 3, solve_part_1);
+        test_sample(SAMPLE3, 0, solve_part_1);
+        test_sample(SAMPLE4, -6, solve_part_1);
     }
 
     #[test]
     fn part_2_is_correct() {
-        test_sample(SAMPLE1, 2, solution::solve_part_2);
-        test_sample(SAMPLE5, 0, solution::solve_part_2);
-        test_sample(SAMPLE6, 10, solution::solve_part_2);
-        test_sample(SAMPLE7, 5, solution::solve_part_2);
-        test_sample(SAMPLE8, 14, solution::solve_part_2);
+        test_sample(SAMPLE1, 2, solve_part_2);
+        test_sample(SAMPLE5, 0, solve_part_2);
+        test_sample(SAMPLE6, 10, solve_part_2);
+        test_sample(SAMPLE7, 5, solve_part_2);
+        test_sample(SAMPLE8, 14, solve_part_2);
     }
 
     fn test_sample(sample: &str, expected: isize, f: fn(&str) -> isize) {

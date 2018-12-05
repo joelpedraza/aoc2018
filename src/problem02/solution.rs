@@ -78,7 +78,7 @@ fn has_single_transpose(word1: &str, word2: &str) -> bool {
 // Test it later! These are puzzle solutions, so even more than 'real' projects: Later means never!
 #[cfg(test)]
 mod tests {
-    use ::problem02::solution;
+    //use super::*;
 
     #[test]
     fn part_1_is_correct() {}

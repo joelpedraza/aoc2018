@@ -149,7 +149,7 @@ fn parse_claims(input: &str) -> Vec<Claim> {
 // Test it later! These are puzzle solutions, so even more than 'real' projects: Later means never!
 #[cfg(test)]
 mod tests {
-    use ::problem03::solution;
+    //use super::*;
 
     #[test]
     fn part_1_is_correct() {}
