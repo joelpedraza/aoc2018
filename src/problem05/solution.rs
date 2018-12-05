@@ -33,15 +33,17 @@ const ALPHA_LOWER: &str = "abcdefghijklmnopqrstuvwzyz";
 const ALPHA_UPPER: &str = "ABCDEFGHIJKLMNOPQRSTUBWZYZ";
 
 fn length_of_best_polymer(polymer: &str) -> usize {
-    let mut min = polymer.len();
+    let initial = react(polymer.to_owned());
 
-    for (lower, upper) in ALPHA_LOWER.chars().zip(ALPHA_UPPER.chars()) {
-        let mut cand = polymer.to_owned();
-        cand.retain(|c| { c != lower && c != upper });
-        min = min.min(react(cand).len());
-    }
-
-    min
+    ALPHA_LOWER.chars()
+        .zip(ALPHA_UPPER.chars())
+        .map(|(lower, upper)| {
+            let mut cand = initial.clone();
+            cand.retain(|c| { c != lower && c != upper });
+            react(cand).len()
+        })
+        .min()
+        .unwrap()
 }
 
 // Helpers
