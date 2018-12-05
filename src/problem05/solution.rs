@@ -1,11 +1,11 @@
 use super::input::POLYMER;
 
 pub fn part1() {
-    println!("Problem 2, Part 1: {}", length_of_polymer_after_reaction(POLYMER))
+    println!("Problem 5, Part 1: {}", length_of_polymer_after_reaction(POLYMER))
 }
 
 pub fn part2() {
-    println!("Problem 2, Part 2: {}", length_of_best_polymer(POLYMER))
+    println!("Problem 5, Part 2: {}", length_of_best_polymer(POLYMER))
 }
 
 fn react(polymer: String) -> String {
