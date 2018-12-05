@@ -1,3 +1,5 @@
+extern crate bit_set;
+
 mod problem01;
 mod problem02;
 mod problem03;

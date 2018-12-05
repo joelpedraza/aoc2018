@@ -14,13 +14,17 @@ pub fn solve_part_1(input: &str) -> isize {
         .sum()
 }
 
+//                                    bit   byte  KiB
+const BIT_SET_INITIAL_CAPACITY: usize = 8 * 1024 * 64; // 64 KiB was large enough for my input
+
 pub fn solve_part_2(input: &str) -> isize {
-    use std::collections::BTreeSet;
-    use std::iter;
-    let mut set = BTreeSet::new();
+    use bit_set::BitSet;
+    use std::iter::once;
+
+    let mut set = BitSet::with_capacity(BIT_SET_INITIAL_CAPACITY);
 
     // 0 is always the initial frequency, so chain the partial sums after 0
-    iter::once(0isize).chain(
+    once(0isize).chain(
         input.lines()
             .cycle()
             .map(|line| {
@@ -32,15 +36,41 @@ pub fn solve_part_2(input: &str) -> isize {
             })
     )
         .find(|freq| {
-            !set.insert(*freq)
+            // In order to insert negative values into the bitset we must convert to positive
+            // use zig zag encoding to keep the bitset small and dense
+            let i = zig_zag_encode(*freq);
+            !set.insert(i)
         })
-        .unwrap()
+        .unwrap() as isize
+}
+
+#[cfg(target_pointer_width = "64")]
+const PTR_WIDTH: u32 = 64;
+
+#[cfg(target_pointer_width = "32")]
+const PTR_WIDTH: u32 = 32;
+
+// https://en.wikipedia.org/wiki/Variable-length_quantity#Zigzag_encoding
+/// Use the lest significant bit for sign
+/// Encode the numbers so that encoded 0 corresponds to 0, 1 to −1, 10 to 1, 11 to −2, 100 to 2, etc
+fn zig_zag_encode(n: isize) -> usize {
+    ((n << 1) ^ (n >> (PTR_WIDTH - 1))) as usize
 }
 
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn zig_zag_is_correct() {
+        assert_eq!(0, zig_zag_encode(0));
+        assert_eq!(1, zig_zag_encode(-1));
+        assert_eq!(2, zig_zag_encode(1));
+        assert_eq!(3, zig_zag_encode(-2));
+        assert_eq!(4294967294, zig_zag_encode(2147483647));
+        assert_eq!(4294967295, zig_zag_encode(-2147483648));
+    }
 
     #[test]
     fn part_1_is_correct() {
