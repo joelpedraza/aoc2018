@@ -1,11 +1,13 @@
 use super::bitvec::BitVec32;
 
 const ALPHA_CHAR_COUNT: usize = 26; // A ... Z
+const LEAF_FLAG_INDEX: usize = 26;
 
 /// A simple Trie for ascii alpha characters with a branching factor of 26.
 ///
 /// Only supports insert.
 /// Only holds prefixes, not words. (Does not currently flag leaves)
+#[derive(Debug)]
 pub struct Trie {
     len: usize,
     root: Node
@@ -18,6 +20,10 @@ impl Trie {
             // init the root with enough space to hold all children
             root: Node::with_capacity(ALPHA_CHAR_COUNT)
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
     }
 
     /// Insert a string into the trie, meanwhile search for a string with a single transposed char
@@ -40,10 +46,22 @@ impl Trie {
     ///
     /// If the set did not have this value present, [true] is returned.
     /// If the set did have this value present, [false] is returned.
-    // TODO when this trie is aware of leaves, this will need to be updated
     pub fn insert(&mut self, s: &str) -> bool {
-        self.len += 1;
-        self.root.insert_search(s)
+        let inserted = self.root.insert_search(s);
+
+        if inserted {
+            self.len += 1;
+        }
+
+        inserted
+    }
+
+    /// Checks whether or not [s] is in the trie
+    ///
+    /// If the set has this value present, [true] is returned.
+    /// If the set does have this value present, [false] is returned.
+    pub fn contains(&mut self, s: &str) -> bool {
+        self.root.contains(s)
     }
 
 
@@ -53,8 +71,8 @@ impl Trie {
 // Node
 // ====
 
+#[derive(Debug)]
 struct Node {
-    // TODO add a flag for is-leaf. Only least significant 26 bits are used.
     mask: BitVec32,
     children: Vec<Node>
 }
@@ -70,6 +88,14 @@ impl Node {
             mask: BitVec32::new(),
             children: Vec::with_capacity(capacity)
         }
+    }
+
+    fn is_leaf(&self) -> bool {
+        self.mask.get(LEAF_FLAG_INDEX)
+    }
+
+    fn set_leaf(&mut self) {
+        self.mask.set(LEAF_FLAG_INDEX)
     }
 
     fn insert_search_transpose(&mut self, s: &str) -> Option<usize> {
@@ -91,7 +117,7 @@ impl Node {
                     // is in the trie
 
                     let has_single_transpose = self.children.iter()
-                        .filter(|x| { x.lookup(tail) })
+                        .filter(|x| { x.contains(tail) })
                         .map(|_|{true})
                         .next()
                         .unwrap_or(false);
@@ -113,6 +139,7 @@ impl Node {
     /// The prefix [s] may be in the trie, walk recursively to look for an insertion point
     /// return true if we performed an insertion
     fn insert_search(&mut self, s: &str) -> bool {
+        //dbg!(s);
         match s.chars()
             .next()
             .as_ref()
@@ -131,13 +158,18 @@ impl Node {
                 }
             },
 
-            None => false
+            None => {
+                let is_leaf = self.is_leaf();
+                self.set_leaf();
+                !is_leaf
+            }
         }
     }
 
     /// The prefix [s] has been guaranteed to be absent (because a new node was created)
     /// perform insertion recursively without checking for node presence
     fn insert(&mut self, s: &str) {
+        //dbg!(s);
         match s.chars()
             .next()
             .as_ref()
@@ -160,12 +192,14 @@ impl Node {
                 self.children[index].insert(tail)
             },
 
-            None => {}
+            None => {
+                self.set_leaf();
+            }
 
         }
     }
 
-    fn lookup(&self, s: &str) -> bool {
+    fn contains(&self, s: &str) -> bool {
         match s.chars()
             .next()
             .as_ref()
@@ -176,12 +210,12 @@ impl Node {
 
                     if is_present {
                         let index = index_to_bit_pos(&self.mask, char_idx);
-                        self.children[index].lookup(&s[1..])
+                        self.children[index].contains(&s[1..])
                     } else {
                         false
                     }
                 }
-                None => true
+                None => self.is_leaf()
             }
     }
 }
@@ -248,9 +282,47 @@ mod tests {
         assert_eq!(false, trie.insert("abcde"));
         assert_eq!(true, trie.insert("abcdef"));
         assert_eq!(false, trie.insert("abcdef"));
+    }
 
-        // TODO this should return true when the trie supports leaves
+    #[test]
+    fn insert_returns_true_when_new_value_is_inserted_2() {
+        let mut trie = Trie::new();
+
+        assert_eq!(true, trie.insert("abcd"));
+
+        // prefix is present, but is not leaf
+        assert_eq!(true, trie.insert("abc"));
         assert_eq!(false, trie.insert("abc"));
+    }
+
+    #[test]
+    fn contains() {
+        let mut trie = Trie::new();
+
+        assert_eq!(false, trie.contains("abc"));
+
+        trie.insert("abc");
+        assert_eq!(true, trie.contains("abc"));
+        assert_eq!(false, trie.contains("ab"));
+    }
+
+    #[test]
+    fn len() {
+        let mut trie = Trie::new();
+
+        assert_eq!(0, trie.len());
+
+        trie.insert("abc");
+        assert_eq!(1, trie.len());
+
+        trie.insert("abd");
+        assert_eq!(2, trie.len());
+
+        trie.insert("abc");
+        assert_eq!(2, trie.len());
+
+        trie.insert("ab");
+        assert_eq!(3, trie.len());
     }
 
     #[test]
