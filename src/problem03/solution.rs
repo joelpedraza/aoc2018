@@ -138,18 +138,19 @@ fn find_non_intersecting_claim(input: &str) -> u16 {
 
 fn parse_claims(input: &str) -> Vec<Claim> {
     input.lines().map(|line| {
-        let digits: String = line.chars()
-            .map(|c| {
+        line
+            .split(|c: char| {
                 match c {
-                    '0'...'9' => c,
-                    _ => ' '
+                    ' ' | '0'...'9' => false,
+                    _ => true
                 }
             })
-            .collect();
-
-        digits
-            .split_whitespace()
-            .map(|s| { s.parse::<u16>().unwrap() })
+            .filter(|s| {
+                !s.is_empty()
+            })
+            .map(|s: &str| {
+                s.trim().parse::<u16>().unwrap()
+            })
             .collect()
     }).collect()
 }
