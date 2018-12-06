@@ -1,12 +1,12 @@
 use ::std::iter::FromIterator;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct Claim {
     id: u16,
     rect: Rect,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct Rect {
     left: u16,
     top: u16,
@@ -34,8 +34,8 @@ impl FromIterator<u16> for Claim {
                 left,
                 top,
                 right,
-                bottom
-            }
+                bottom,
+            },
         }
     }
 }
@@ -58,32 +58,43 @@ impl Rect {
 }
 
 pub fn part1() {
-    println!("Problem 3, Part 1: {}", brute_force(INPUT))
+    println!("Problem 3, Part 1: {}", solve_part_1(INPUT))
 }
 
 pub fn part2() {
     println!("Problem 3, Part 2: {}", find_non_intersecting_claim(INPUT))
 }
 
-fn brute_force(input: &str) -> usize {
-    use bit_set::BitSet;
+fn solve_part_1(input: &str) -> usize {
+    let claims = {
+        let mut claims = parse_claims(input);
+        claims.sort_by(|a, b| { a.rect.top.cmp(&b.rect.top) });
+        claims
+    };
+    brute_force(&claims)
+}
 
-    let claims = parse_claims(input);
+/// Check claims against all other claims overlapping in the same horizontal space
+/// ASSUMES INPUT IS SORTED BY TOP
+fn brute_force(claims: &[Claim]) -> usize {
+    use bit_set::BitSet;
     let len = claims.len();
 
-    let mut intersected_squares = BitSet::new();
+    let mut intersected_squares: BitSet = BitSet::new();
 
     for i in 0..len {
-        for j in i+1..len {
+        for j in i + 1..len {
             let a = &claims[i];
             let b = &claims[j];
+
+            if a.rect.bottom < b.rect.top { break; }
 
             let intersection = a.rect.intersect(&b.rect);
 
             match intersection {
                 Some(r) => {
-                    for y in r.top .. r.bottom {
-                        for x in r.left .. r.right {
+                    for y in r.top..r.bottom {
+                        for x in r.left..r.right {
                             intersected_squares.insert(y as usize * 1000usize + x as usize);
                         }
                     }
@@ -106,7 +117,7 @@ fn find_non_intersecting_claim(input: &str) -> u16 {
         .collect();
 
     for i in 0..len {
-        for j in i+1..len {
+        for j in i + 1..len {
             let a = &claims[i];
             let b = &claims[j];
 
@@ -149,15 +160,38 @@ fn parse_claims(input: &str) -> Vec<Claim> {
 // Test it later! These are puzzle solutions, so even more than 'real' projects: Later means never!
 #[cfg(test)]
 mod tests {
-    //use super::*;
+    use super::*;
 
     #[test]
-    fn part_1_is_correct() {}
+    fn part_1_is_correct() {
+        assert_eq!(101781, solve_part_1(INPUT))
+    }
 
     #[test]
     fn part_2_is_correct() {}
 }
 
+
+#[cfg(all(feature = "unstable", test))]
+mod bench {
+    extern crate test;
+
+    use super::*;
+    use self::test::Bencher;
+
+
+    #[bench]
+    fn parse(b: &mut Bencher) {
+        b.iter(|| parse_claims(INPUT));
+    }
+
+    #[bench]
+    fn bf(b: &mut Bencher) {
+        let claims = parse_claims(INPUT);
+        b.iter(|| brute_force(&claims));
+    }
+
+}
 
 // ACTUAL INPUT
 // ============

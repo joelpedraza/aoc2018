@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "unstable", feature(test))]
+
 extern crate bit_set;
 
 mod problem01;

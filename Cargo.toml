@@ -5,3 +5,6 @@ authors = ["Joel Pedraza <jpedraza@chewy.com>"]
 
 [dependencies]
 bit-set = "0.5.0"
+
+[features]
+unstable = []
