@@ -2,6 +2,8 @@
 
 extern crate bit_set;
 
+mod bitvec;
+mod trie;
 mod math;
 
 mod problem01;

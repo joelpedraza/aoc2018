@@ -3,7 +3,7 @@ pub fn part1() {
 }
 
 pub fn part2() {
-    println!("Problem 2, Part 2: {}", find_boxes_with_single_transpose(INPUT))
+    println!("Problem 2, Part 2: {}", find_boxes_with_single_transpose_trie(INPUT))
 }
 
 type LetterCount = [u8; 32];
@@ -42,7 +42,7 @@ pub fn calculate_checksum(input: &str) -> usize {
     twos * threes
 }
 
-pub fn find_boxes_with_single_transpose(input: &str) -> String {
+pub fn find_boxes_with_single_transpose_bruteforce(input: &str) -> String {
     let words: Vec<&str> = input.lines().collect();
     let len = words.len();
     
@@ -66,6 +66,23 @@ pub fn find_boxes_with_single_transpose(input: &str) -> String {
     unreachable!("No two words had only single transposition")
 }
 
+pub fn find_boxes_with_single_transpose_trie(input: &str) -> String {
+    use ::trie::Trie;
+
+    let mut trie = Trie::new();
+    input.lines()
+        .filter_map(|word| {
+            trie.insert(word)
+                .map(|i| {
+                    let mut s = word[..i].to_owned();
+                    s.push_str(&word[i+1..]);
+                    s
+                })
+        })
+        .next()
+        .unwrap()
+}
+
 fn has_single_transpose(word1: &str, word2: &str) -> bool {
     let mut count = 0;
     for (a, b) in word1.chars().zip(word2.chars()) {
@@ -78,15 +95,56 @@ fn has_single_transpose(word1: &str, word2: &str) -> bool {
 // Test it later! These are puzzle solutions, so even more than 'real' projects: Later means never!
 #[cfg(test)]
 mod tests {
-    //use super::*;
+    use super::*;
 
     #[test]
     fn part_1_is_correct() {}
 
     #[test]
+    fn trie_is_correct_with_sample_data() {
+        let actual = find_boxes_with_single_transpose_bruteforce(SAMPLE_INPUT);
+        let expected = find_boxes_with_single_transpose_trie(SAMPLE_INPUT);
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
+    fn trie_is_correct_with_input_data() {
+        let actual = find_boxes_with_single_transpose_bruteforce(INPUT);
+        let expected = find_boxes_with_single_transpose_trie(INPUT);
+        assert_eq!(expected, actual)
+    }
+
+    #[test]
     fn part_2_is_correct() {}
+
+    const SAMPLE_INPUT: &str = "\
+abcde\n\
+fghij\n\
+klmno\n\
+pqrst\n\
+fguij\n\
+axcye\n\
+wvxyz\
+";
 }
 
+#[cfg(all(feature = "unstable", test))]
+mod bench {
+    extern crate test;
+
+    use super::*;
+    use self::test::Bencher;
+
+    #[bench]
+    fn p2_bf(b: &mut Bencher) {
+        b.iter(|| find_boxes_with_single_transpose_bruteforce(INPUT));
+    }
+
+    #[bench]
+    fn p2_trie(b: &mut Bencher) {
+        b.iter(|| find_boxes_with_single_transpose_trie(INPUT));
+    }
+}
 
 // ACTUAL INPUT
 // ============
