@@ -72,7 +72,7 @@ pub fn find_boxes_with_single_transpose_trie(input: &str) -> String {
     let mut trie = Trie::new();
     input.lines()
         .filter_map(|word| {
-            trie.insert(word)
+            trie.insert_search_single_transpose(word)
                 .map(|i| {
                     let mut s = word[..i].to_owned();
                     s.push_str(&word[i+1..]);

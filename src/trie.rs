@@ -20,19 +20,33 @@ impl Trie {
         }
     }
 
-    /// Insert a string into the trie
+    /// Insert a string into the trie, meanwhile search for a string with a single transposed char
     ///
-    /// return [Some(index)] of the transposed character when the trie contains a prefix equal to
+    /// return [Some(index)] of the transposed character if the trie contains a prefix equal to
     /// [s] but with only a single character transposed
     ///
-    // TODO This is a very contrived definition of insert!
+    // TODO This is a a contrived use case!
     // Implement something more like HashMap.Entry to allow consumers of this api to find the
     // insertion point
-    pub fn insert(&mut self, s: &str) -> Option<usize> {
+    pub fn insert_search_single_transpose(&mut self, s: &str) -> Option<usize> {
         self.len += 1;
-        self.root.insert(0, s)
-            .map(|tail_len| { s.len() - tail_len } )
+        self.root.insert_search_transpose(s)
+            .map(|tail_len| {
+                s.len() - tail_len
+            })
     }
+
+    /// Insert a string into the trie
+    ///
+    /// If the set did not have this value present, [true] is returned.
+    /// If the set did have this value present, [false] is returned.
+    // TODO when this trie is aware of leaves, this will need to be updated
+    pub fn insert(&mut self, s: &str) -> bool {
+        self.len += 1;
+        self.root.insert_search(s)
+    }
+
+
 }
 
 
@@ -58,8 +72,7 @@ impl Node {
         }
     }
 
-    #[inline]
-    fn insert(&mut self, transpose_count: usize, s: &str) -> Option<usize> {
+    fn insert_search_transpose(&mut self, s: &str) -> Option<usize> {
         match s.chars()
             .next()
             .as_ref()
@@ -67,49 +80,29 @@ impl Node {
 
             Some(char_idx) => {
                 let is_present = self.mask.get(char_idx);
+                let tail = &s[1..];
 
                 if is_present {
                     let index = index_to_bit_pos(&self.mask, char_idx);
-                    self.children[index].insert(transpose_count, &s[1..])
+                    self.children[index].insert_search_transpose(tail)
                 } else {
-
-
-                    let tail = &s[1..];
 
                     // walk the rest of the trie after this node. if we hit a leaf the prefix
                     // is in the trie
 
-                    if transpose_count == 0 {
-                        let has_single_transpose = self.children.iter()
-                            .filter(|x| { x.lookup(tail) })
-                            .map(|_|{true})
-                            .next()
-                            .unwrap_or(false);
+                    let has_single_transpose = self.children.iter()
+                        .filter(|x| { x.lookup(tail) })
+                        .map(|_|{true})
+                        .next()
+                        .unwrap_or(false);
 
-                        if has_single_transpose {
-                            return Some(s.len())
-                        }
-                    }
-
-
-                    // the prefix is not in the trie, keep inserting
-
-                    let insertion_point = index_to_bit_pos(&self.mask, char_idx);
-
-                    // self.children.reserve_exact(1);
-
-                    if insertion_point == self.children.len() {
-                        self.children.push(Node::new());
+                    if has_single_transpose {
+                        Some(s.len())
                     } else {
-                        self.children.insert(insertion_point, Node::new());
+                        self.insert(s);
+                        None
                     }
-
-                    self.mask.set(char_idx);
-
-                    self.children[insertion_point].insert(transpose_count + 1, tail)
                 }
-
-
             },
 
             None => None
@@ -117,7 +110,61 @@ impl Node {
         }
     }
 
-    #[inline]
+    /// The prefix [s] may be in the trie, walk recursively to look for an insertion point
+    /// return true if we performed an insertion
+    fn insert_search(&mut self, s: &str) -> bool {
+        match s.chars()
+            .next()
+            .as_ref()
+            .map(char_to_index) {
+
+            Some(char_idx) => {
+                let is_present = self.mask.get(char_idx);
+                let tail = &s[1..];
+
+                if is_present {
+                    let index = index_to_bit_pos(&self.mask, char_idx);
+                    self.children[index].insert_search(tail)
+                } else {
+                    self.insert(s);
+                    true
+                }
+            },
+
+            None => false
+        }
+    }
+
+    /// The prefix [s] has been guaranteed to be absent (because a new node was created)
+    /// perform insertion recursively without checking for node presence
+    fn insert(&mut self, s: &str) {
+        match s.chars()
+            .next()
+            .as_ref()
+            .map(char_to_index) {
+
+            Some(char_idx) => {
+                let tail = &s[1..];
+                let index = index_to_bit_pos(&self.mask, char_idx);
+
+                debug_assert!(!self.mask.get(char_idx), "found a child during insert");
+
+                if index == self.children.len() {
+                    self.children.push(Node::new());
+                } else {
+                    self.children.insert(index, Node::new());
+                }
+
+                self.mask.set(char_idx);
+
+                self.children[index].insert(tail)
+            },
+
+            None => {}
+
+        }
+    }
+
     fn lookup(&self, s: &str) -> bool {
         match s.chars()
             .next()
@@ -134,9 +181,7 @@ impl Node {
                         false
                     }
                 }
-                None => {
-                    true
-                }
+                None => true
             }
     }
 }
@@ -166,46 +211,59 @@ mod tests {
     fn insert_single_letters() {
         let mut trie = Trie::new();
 
-        assert_eq!(false, trie.insert("a").is_some());
-        assert_eq!(true, trie.insert("b").is_some());
-        assert_eq!(true, trie.insert("c").is_some());
-        assert_eq!(true, trie.insert("d").is_some());
-        assert_eq!(true, trie.insert("e").is_some());
-        assert_eq!(true, trie.insert("f").is_some());
-        assert_eq!(true, trie.insert("g").is_some());
-        assert_eq!(true, trie.insert("h").is_some());
-        assert_eq!(true, trie.insert("i").is_some());
-        assert_eq!(true, trie.insert("j").is_some());
-        assert_eq!(true, trie.insert("k").is_some());
-        assert_eq!(true, trie.insert("l").is_some());
-        assert_eq!(true, trie.insert("m").is_some());
-        assert_eq!(true, trie.insert("n").is_some());
-        assert_eq!(true, trie.insert("o").is_some());
-        assert_eq!(true, trie.insert("p").is_some());
-        assert_eq!(true, trie.insert("p").is_some());
-        assert_eq!(true, trie.insert("q").is_some());
-        assert_eq!(true, trie.insert("r").is_some());
-        assert_eq!(true, trie.insert("s").is_some());
-        assert_eq!(true, trie.insert("t").is_some());
-        assert_eq!(true, trie.insert("u").is_some());
-        assert_eq!(true, trie.insert("v").is_some());
-        assert_eq!(true, trie.insert("w").is_some());
-        assert_eq!(true, trie.insert("x").is_some());
-        assert_eq!(true, trie.insert("y").is_some());
-        assert_eq!(true, trie.insert("z").is_some());
+        assert_eq!(false, trie.insert_search_single_transpose("a").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("b").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("c").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("d").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("e").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("f").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("g").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("h").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("i").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("j").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("k").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("l").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("m").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("n").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("o").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("p").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("p").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("q").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("r").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("s").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("t").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("u").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("v").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("w").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("x").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("y").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("z").is_some());
     }
 
     #[test]
-    fn insert_single_packge_ids() {
+    fn insert_returns_true_when_new_value_is_inserted() {
         let mut trie = Trie::new();
 
-        assert_eq!(false, trie.insert("abcde").is_some());
-        assert_eq!(false, trie.insert("fghij").is_some());
-        assert_eq!(false, trie.insert("klmno").is_some());
-        assert_eq!(false, trie.insert("pqrst").is_some());
-        assert_eq!(true, trie.insert("fguij").is_some());
-        assert_eq!(false, trie.insert("axcye").is_some());
-        assert_eq!(false, trie.insert("wvxyz").is_some());
+        assert_eq!(true, trie.insert("abcde"));
+        assert_eq!(false, trie.insert("abcde"));
+        assert_eq!(true, trie.insert("abcdef"));
+        assert_eq!(false, trie.insert("abcdef"));
+
+        // TODO this should return true when the trie supports leaves
+        assert_eq!(false, trie.insert("abc"));
+    }
+
+    #[test]
+    fn insert_search_package_ids() {
+        let mut trie = Trie::new();
+
+        assert_eq!(false, trie.insert_search_single_transpose("abcde").is_some());
+        assert_eq!(false, trie.insert_search_single_transpose("fghij").is_some());
+        assert_eq!(false, trie.insert_search_single_transpose("klmno").is_some());
+        assert_eq!(false, trie.insert_search_single_transpose("pqrst").is_some());
+        assert_eq!(true, trie.insert_search_single_transpose("fguij").is_some());
+        assert_eq!(false, trie.insert_search_single_transpose("axcye").is_some());
+        assert_eq!(false, trie.insert_search_single_transpose("wvxyz").is_some());
     }
 
     #[test]
