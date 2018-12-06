@@ -62,7 +62,7 @@ pub fn part1() {
 }
 
 pub fn part2() {
-    println!("Problem 3, Part 2: {}", find_non_intersecting_claim(INPUT))
+    println!("Problem 3, Part 2: {}", solve_part_2(INPUT))
 }
 
 fn solve_part_1(input: &str) -> usize {
@@ -72,6 +72,15 @@ fn solve_part_1(input: &str) -> usize {
         claims
     };
     brute_force(&claims)
+}
+
+fn solve_part_2(input: &str) -> u16 {
+    let claims = {
+        let mut claims = parse_claims(input);
+        claims.sort_by(|a, b| { a.rect.top.cmp(&b.rect.top) });
+        claims
+    };
+    find_non_intersecting_claim(&claims)
 }
 
 /// Check claims against all other claims overlapping in the same horizontal space
@@ -106,10 +115,10 @@ fn brute_force(claims: &[Claim]) -> usize {
     intersected_squares.len()
 }
 
-fn find_non_intersecting_claim(input: &str) -> u16 {
+
+fn find_non_intersecting_claim(claims: &[Claim]) -> u16 {
     use bit_set::BitSet;
 
-    let claims = parse_claims(input);
     let len = claims.len();
 
     let mut intersected_squares: BitSet<usize> = claims.iter()
@@ -120,6 +129,8 @@ fn find_non_intersecting_claim(input: &str) -> u16 {
         for j in i + 1..len {
             let a = &claims[i];
             let b = &claims[j];
+
+            if a.rect.bottom < b.rect.top { break; }
 
             let intersection = a.rect.intersect(&b.rect);
 
@@ -134,7 +145,6 @@ fn find_non_intersecting_claim(input: &str) -> u16 {
 
     (intersected_squares.iter().next().unwrap()) as u16
 }
-
 
 fn parse_claims(input: &str) -> Vec<Claim> {
     input.lines().map(|line| {
@@ -169,7 +179,9 @@ mod tests {
     }
 
     #[test]
-    fn part_2_is_correct() {}
+    fn part_2_is_correct() {
+        assert_eq!(909, solve_part_2(INPUT))
+    }
 }
 
 
@@ -190,6 +202,13 @@ mod bench {
     fn bf(b: &mut Bencher) {
         let claims = parse_claims(INPUT);
         b.iter(|| brute_force(&claims));
+    }
+
+    #[bench]
+    fn non_intersect(b: &mut Bencher) {
+        let mut claims = parse_claims(INPUT);
+        claims.sort_by(|a, b| { a.rect.top.cmp(&b.rect.top) });
+        b.iter(|| find_non_intersecting_claim(&claims));
     }
 
 }
