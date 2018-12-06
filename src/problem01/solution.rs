@@ -21,7 +21,7 @@ pub fn solve_part_2(input: &str) -> isize {
     use bit_set::BitSet;
     use std::iter::once;
 
-    let mut set = BitSet::with_capacity(BIT_SET_INITIAL_CAPACITY);
+    let mut set: BitSet = BitSet::with_capacity(BIT_SET_INITIAL_CAPACITY);
 
     // 0 is always the initial frequency, so chain the partial sums after 0
     once(0isize).chain(

@@ -80,7 +80,7 @@ fn brute_force(claims: &[Claim]) -> usize {
     use bit_set::BitSet;
     let len = claims.len();
 
-    let mut intersected_squares: BitSet = BitSet::new();
+    let mut intersected_squares: BitSet<usize> = BitSet::default();
 
     for i in 0..len {
         for j in i + 1..len {
@@ -112,7 +112,7 @@ fn find_non_intersecting_claim(input: &str) -> u16 {
     let claims = parse_claims(input);
     let len = claims.len();
 
-    let mut intersected_squares: BitSet = claims.iter()
+    let mut intersected_squares: BitSet<usize> = claims.iter()
         .map(|claim| { claim.id as usize })
         .collect();
 
