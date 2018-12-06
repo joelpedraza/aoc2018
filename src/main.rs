@@ -43,7 +43,7 @@ fn time_it(f: fn() -> ()) {
     let elapsed = now.elapsed();
 
     let nanos = elapsed.as_secs() * 1_000_000_000u64 + elapsed.subsec_nanos() as u64;
-    let millis = nanos as f64 / 1_000f64;
+    let millis = nanos as f64 / 1_000_000f64;
 
     println!("{: >20.04}ms", millis);
 
