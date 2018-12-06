@@ -23,18 +23,18 @@ pub fn solve_part_2(input: &str) -> isize {
 
     let mut set: BitSet = BitSet::with_capacity(BIT_SET_INITIAL_CAPACITY);
 
-    // 0 is always the initial frequency, so chain the partial sums after 0
-    once(0isize).chain(
-        input.lines()
-            .cycle()
-            .map(|line| {
-                line.parse::<isize>().unwrap()
-            })
-            .scan(0isize, |acc, n| {
-                *acc += n;
-                Some(*acc)
-            })
-    )
+    // 0 is the initial frequency
+    set.insert(0);
+
+    input.lines()
+        .map(|line| {
+            line.parse::<isize>().unwrap()
+        })
+        .cycle()
+        .scan(0isize, |acc, n| {
+            *acc += n;
+            Some(*acc)
+        })
         .find(|freq| {
             // In order to insert negative values into the bitset we must convert to positive
             // use zig zag encoding to keep the bitset small and dense
