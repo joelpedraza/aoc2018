@@ -7,6 +7,7 @@ mod problem02;
 mod problem03;
 mod problem04;
 mod problem05;
+mod problem06;
 
 fn main() {
     do_problem(problem01::part1);
@@ -23,6 +24,9 @@ fn main() {
 
     do_problem(problem05::part1);
     do_problem(problem05::part2);
+
+    do_problem(problem06::part1);
+    do_problem(problem06::part2);
 }
 
 fn time_it(f: fn() -> ()) {
