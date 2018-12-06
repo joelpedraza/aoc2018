@@ -2,6 +2,8 @@
 
 extern crate bit_set;
 
+mod math;
+
 mod problem01;
 mod problem02;
 mod problem03;

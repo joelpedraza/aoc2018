@@ -1,3 +1,4 @@
+use ::math::SubAbs;
 use super::input::POLYMER;
 
 pub fn part1() {
@@ -47,18 +48,10 @@ fn length_of_best_polymer(polymer: &str) -> usize {
 // Helpers
 // =======
 
-fn diff_abs(a: u8, b: u8) -> u8 {
-    if a > b {
-        a - b
-    } else {
-        b - a
-    }
-}
-
 const REACTION_DIFFERENCE: u8 = 'a' as u8 - 'A' as u8;
 
 fn has_reaction(left: u8, right: u8) -> bool {
-    diff_abs(left, right) == REACTION_DIFFERENCE
+    left.sub_abs(right) == REACTION_DIFFERENCE
 }
 
 

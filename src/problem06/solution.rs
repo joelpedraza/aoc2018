@@ -1,3 +1,5 @@
+use ::math::SubAbs;
+
 const INPUT: &str = include_str!("input.txt");
 const INPUT_THRESHOLD: usize = 10_000;
 
@@ -178,14 +180,6 @@ impl Rect {
     }
 }
 
-fn diff_abs(a: u16, b: u16) -> u16 {
-    if a > b {
-        a - b
-    } else {
-        b - a
-    }
-}
-
 trait ManhattanDistance {
     type Output;
 
@@ -196,7 +190,7 @@ impl ManhattanDistance for Point {
     type Output = u16;
 
     fn manhattan_distance(&self, other: &Self) -> Self::Output {
-        diff_abs(self.x, other.x) + diff_abs(self.y, other.y)
+        self.x.sub_abs(other.x) + self.y.sub_abs(other.y)
     }
 }
 
