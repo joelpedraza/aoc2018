@@ -1,16 +1,25 @@
 use super::bitvec::BitVec32;
 
-const ALPHA_CHAR_COUNT: usize = 26; // A ... Z
+// A 26 way Trie based on Array Mapped Trees "Fast And Space Efficient Trie Searches" - Bagwell 2000
+// Bits 0-25 are used as the AMT mask
+// Bit 26 is the leaf flag
+// Bits 27-32 are unused
+
+/// A ... Z is 26 letters
+const ALPHA_CHAR_COUNT: usize = 26;
+
+// BIT FLAGS
+
+/// The flag indicating a node is a leaf
 const LEAF_FLAG_INDEX: usize = 26;
 
 /// A simple Trie for ascii alpha characters with a branching factor of 26.
 ///
 /// Only supports insert.
-/// Only holds prefixes, not words. (Does not currently flag leaves)
 #[derive(Debug)]
 pub struct Trie {
     len: usize,
-    root: Node
+    root: Node,
 }
 
 impl Trie {
@@ -18,28 +27,13 @@ impl Trie {
         Trie {
             len: 0,
             // init the root with enough space to hold all children
-            root: Node::with_capacity(ALPHA_CHAR_COUNT)
+            root: Node::with_capacity(ALPHA_CHAR_COUNT),
         }
     }
 
+    /// The number of strings in the trie
     pub fn len(&self) -> usize {
         self.len
-    }
-
-    /// Insert a string into the trie, meanwhile search for a string with a single transposed char
-    ///
-    /// return [Some(index)] of the transposed character if the trie contains a prefix equal to
-    /// [s] but with only a single character transposed
-    ///
-    // TODO This is a a contrived use case!
-    // Implement something more like HashMap.Entry to allow consumers of this api to find the
-    // insertion point
-    pub fn insert_search_single_transpose(&mut self, s: &str) -> Option<usize> {
-        self.len += 1;
-        self.root.insert_search_transpose(s)
-            .map(|tail_len| {
-                s.len() - tail_len
-            })
     }
 
     /// Insert a string into the trie
@@ -64,7 +58,10 @@ impl Trie {
         self.root.contains(s)
     }
 
-
+    /// Gets the given string's corresponding entry in the trie for in-place manipulation.
+    pub fn entry(&mut self, s: &str) -> Option<Entry> {
+        self.root.find_entry(0, s)
+    }
 }
 
 
@@ -74,11 +71,10 @@ impl Trie {
 #[derive(Debug)]
 struct Node {
     mask: BitVec32,
-    children: Vec<Node>
+    children: Vec<Node>,
 }
 
 impl Node {
-
     fn new() -> Node {
         Self::with_capacity(0)
     }
@@ -86,7 +82,7 @@ impl Node {
     fn with_capacity(capacity: usize) -> Node {
         Node {
             mask: BitVec32::new(),
-            children: Vec::with_capacity(capacity)
+            children: Vec::with_capacity(capacity),
         }
     }
 
@@ -98,53 +94,13 @@ impl Node {
         self.mask.set(LEAF_FLAG_INDEX)
     }
 
-    fn insert_search_transpose(&mut self, s: &str) -> Option<usize> {
-        match s.chars()
-            .next()
-            .as_ref()
-            .map(char_to_index) {
-
-            Some(char_idx) => {
-                let is_present = self.mask.get(char_idx);
-                let tail = &s[1..];
-
-                if is_present {
-                    let index = index_to_bit_pos(&self.mask, char_idx);
-                    self.children[index].insert_search_transpose(tail)
-                } else {
-
-                    // walk the rest of the trie after this node. if we hit a leaf the prefix
-                    // is in the trie
-
-                    let has_single_transpose = self.children.iter()
-                        .filter(|x| { x.contains(tail) })
-                        .map(|_|{true})
-                        .next()
-                        .unwrap_or(false);
-
-                    if has_single_transpose {
-                        Some(s.len())
-                    } else {
-                        self.insert(s);
-                        None
-                    }
-                }
-            },
-
-            None => None
-
-        }
-    }
-
     /// The prefix [s] may be in the trie, walk recursively to look for an insertion point
     /// return true if we performed an insertion
     fn insert_search(&mut self, s: &str) -> bool {
-        //dbg!(s);
         match s.chars()
             .next()
             .as_ref()
             .map(char_to_index) {
-
             Some(char_idx) => {
                 let is_present = self.mask.get(char_idx);
                 let tail = &s[1..];
@@ -156,7 +112,7 @@ impl Node {
                     self.insert(s);
                     true
                 }
-            },
+            }
 
             None => {
                 let is_leaf = self.is_leaf();
@@ -166,15 +122,39 @@ impl Node {
         }
     }
 
-    /// The prefix [s] has been guaranteed to be absent (because a new node was created)
-    /// perform insertion recursively without checking for node presence
-    fn insert(&mut self, s: &str) {
-        //dbg!(s);
+    /// The prefix [s] may be in the trie, walk recursively to look for an insertion point
+    /// return true if we performed an insertion
+    fn find_entry(&mut self, depth: usize, s: &str) -> Option<Entry> {
         match s.chars()
             .next()
             .as_ref()
             .map(char_to_index) {
+            Some(char_idx) => {
+                let is_present = self.mask.get(char_idx);
+                let tail = &s[1..];
 
+                if is_present {
+                    let index = index_to_bit_pos(&self.mask, char_idx);
+                    self.children[index].find_entry(depth + 1, tail)
+                } else {
+                    Some(Entry {
+                        node: self,
+                        index: depth,
+                    })
+                }
+            }
+
+            None => None
+        }
+    }
+
+    /// The prefix [s] has been guaranteed to be absent (because a new node was created)
+    /// perform insertion recursively without checking for node presence
+    fn insert(&mut self, s: &str) {
+        match s.chars()
+            .next()
+            .as_ref()
+            .map(char_to_index) {
             Some(char_idx) => {
                 let tail = &s[1..];
                 let index = index_to_bit_pos(&self.mask, char_idx);
@@ -190,12 +170,11 @@ impl Node {
                 self.mask.set(char_idx);
 
                 self.children[index].insert(tail)
-            },
+            }
 
             None => {
                 self.set_leaf();
             }
-
         }
     }
 
@@ -220,6 +199,77 @@ impl Node {
     }
 }
 
+pub struct Entry<'a> {
+    node: &'a mut Node,
+    index: usize,
+}
+
+impl<'a> Entry<'a> {
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
+    pub fn contains(&self, tail: &str) -> bool {
+        self.node.contains(tail)
+    }
+
+    pub fn insert(&mut self, tail: &str) -> bool {
+        self.node.insert_search(tail)
+    }
+
+    /*pub fn iter(&self) -> EntryIter {
+        EntryIter {
+            iter: self.node.children.iter(),
+            index: self.index + 1,
+        }
+    }*/
+
+    pub fn iter_mut(&mut self) -> EntryIterMut {
+        EntryIterMut {
+            iter: self.node.children.iter_mut(),
+            index: self.index + 1,
+        }
+    }
+}
+
+/*struct EntryIter<'a> {
+    iter: std::slice::Iter<'a, Node>,
+    index: usize,
+}*/
+
+/*impl<'a> Iterator for EntryIter<'a> {
+    type Item = Entry<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+            .map(|node| {
+                Entry {
+                    node: node,
+                    index: self.index,
+                }
+            })
+    }
+}*/
+
+pub struct EntryIterMut<'a> {
+    iter: std::slice::IterMut<'a, Node>,
+    index: usize,
+}
+
+impl<'a> Iterator for EntryIterMut<'a> {
+    type Item = Entry<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+            .map(|mut node| {
+                Entry {
+                    node: node,
+                    index: self.index,
+                }
+            })
+    }
+}
+
 
 // HELPERS
 // =======
@@ -240,39 +290,6 @@ fn index_to_bit_pos(bitmap: &BitVec32, i: usize) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn insert_single_letters() {
-        let mut trie = Trie::new();
-
-        assert_eq!(false, trie.insert_search_single_transpose("a").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("b").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("c").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("d").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("e").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("f").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("g").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("h").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("i").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("j").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("k").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("l").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("m").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("n").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("o").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("p").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("p").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("q").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("r").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("s").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("t").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("u").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("v").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("w").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("x").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("y").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("z").is_some());
-    }
 
     #[test]
     fn insert_returns_true_when_new_value_is_inserted() {
@@ -326,23 +343,9 @@ mod tests {
     }
 
     #[test]
-    fn insert_search_package_ids() {
-        let mut trie = Trie::new();
-
-        assert_eq!(false, trie.insert_search_single_transpose("abcde").is_some());
-        assert_eq!(false, trie.insert_search_single_transpose("fghij").is_some());
-        assert_eq!(false, trie.insert_search_single_transpose("klmno").is_some());
-        assert_eq!(false, trie.insert_search_single_transpose("pqrst").is_some());
-        assert_eq!(true, trie.insert_search_single_transpose("fguij").is_some());
-        assert_eq!(false, trie.insert_search_single_transpose("axcye").is_some());
-        assert_eq!(false, trie.insert_search_single_transpose("wvxyz").is_some());
-    }
-
-    #[test]
     fn lookup_bit_pos() {
         let mut bv = BitVec32::new();
         assert_eq!(0, index_to_bit_pos(&bv, 0));
-
 
         bv.set(0);
         assert_eq!(1, index_to_bit_pos(&bv, 1));
@@ -362,5 +365,19 @@ mod tests {
         assert_eq!(1, index_to_bit_pos(&bv, 1));
         assert_eq!(15, index_to_bit_pos(&bv, 15));
         assert_eq!(31, index_to_bit_pos(&bv, 31));
+    }
+
+    #[test]
+    fn entry_is_found() {
+        let mut trie = Trie::new();
+        trie.insert("fghij");
+
+        let mut entry = trie.entry("fguij").unwrap();
+
+        assert_eq!(2, entry.index());
+
+        let entries: Vec<Entry> = entry.iter_mut().collect();
+        assert_eq!(1, entries.len());
+        assert_eq!(true, entries[0].contains("ij"));
     }
 }
